@@ -60,13 +60,19 @@ int main() {
         FD_SET(STDIN_FILENO, &readfds);
         FD_SET(socket_fd, &readfds);
         
-
         int readyfds = select(max_fd + 1, &readfds, NULL, NULL, &timeout);
         
         char out[50];
         if (readyfds > 0) {
             if (FD_ISSET(STDIN_FILENO, &readfds)) {
                 if(fgets(out, sizeof(out), stdin) != NULL) {
+                    int size = strcspn(out, "\n");
+                    out[size] = '\0';
+                    if (strcmp(out, "EXIT") == 0) {
+                        close(socket_fd);
+                        break;
+                    }
+
                     if (send(socket_fd, out, strlen(out), 0) == -1) {
                         printf("failed to send message to client\n");
                     } 

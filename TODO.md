@@ -1,0 +1,6 @@
+- [ ] Split code into helper functions
+- [ ] Add username and print message with username
+- [ ] Broadcast new client Joinee message to everyone
+- [ ] Handle client socket disconnection
+- [ ] Variable sized message send & receive
+- [ ] Partial read and write messages

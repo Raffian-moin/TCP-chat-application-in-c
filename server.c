@@ -117,8 +117,12 @@ int main() {
                                 } 
                             }
                         }
-                    }
-
+                    } else if (recvint == 0) {
+                        close(fdstr.fds[i]);
+                        fdstr.fds[i] = fdstr.fds[fdstr.total-1];
+                        fdstr.total--;
+                        printf("connection disconnected\n");
+                    } 
                 }
             }
             
