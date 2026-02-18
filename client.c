@@ -9,7 +9,37 @@
 #define SERVER_IP_ADDRESS "127.0.0.1" 
 #define SERVER_PORT "3009" 
 
+
+void set_username(char (*username)[]) {
+    while(1) {
+        int flag = 1;
+        printf("Write your username: ");
+        fflush(stdin);
+        fgets(*username, sizeof(username), stdin);
+        for(int i = 0; i < strlen(*username); i++) {
+            char ch = (*username)[i];
+            if (ch == '\n') {
+                (*username)[i] = '\0';
+                break;
+            }
+            if((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') ||  (ch >= '0' && ch <= '9') || ch == '_') {
+                continue;
+            } else {
+                flag = 0;
+                printf("Only alpahneumeric and underscore(_) character is allowed\n");
+                break;
+            }
+        }
+
+        if (flag) break;
+    }
+}
+
 int main() {
+
+    char username[20];
+    set_username(&username);
+
     struct addrinfo hints, *res;
     memset(&hints, 0, sizeof(hints));
 
@@ -53,6 +83,10 @@ int main() {
     struct timeval timeout = {2, 0};
     int max_fd = socket_fd;
 
+    if (send(socket_fd, username, strlen(username), 0) == -1) {
+        printf("failed to send message to client\n");
+    } 
+
     while(1) { 
         
         FD_ZERO(&readfds);
@@ -81,12 +115,12 @@ int main() {
             }
 
             if (FD_ISSET(socket_fd, &readfds)) {
-                char buff[50];
+                char buff[75];
                 memset(buff, 0, sizeof(buff));
 
                 int recvint = recv(socket_fd, buff, sizeof(buff), 0);
                 if (recvint > 0) {
-                    printf("received: %s\n", buff);
+                    printf("%s\n", buff);
                 }
             }
         }

@@ -18,10 +18,15 @@ void *get_in_address(struct sockaddr *peer_addr) {
         }
 }
 
+struct fd_details {
+    char username[20];
+    int fd;
+};
+
 struct fdstruct {
     int capacity;
     int total;
-    int fds[10];
+    struct fd_details fds[10];
 };
 
 int main() {
@@ -84,42 +89,40 @@ int main() {
     struct timeval timeout = {2, 0};
     int max_fd = socket_fd;
 
-    fdstr.fds[fdstr.total] = socket_fd;
+    fdstr.fds[fdstr.total].fd = socket_fd;
     fdstr.total++;
 
     while(1) {
         FD_ZERO(&readfds);
 
         for(int i = 0; i < fdstr.total; i++) {
-            FD_SET(fdstr.fds[i], &readfds);
-            if (fdstr.fds[i] > max_fd) {
-                max_fd = fdstr.fds[i];
+            FD_SET(fdstr.fds[i].fd, &readfds);
+            if (fdstr.fds[i].fd > max_fd) {
+                max_fd = fdstr.fds[i].fd;
             }
         }
 
         int readyfds = select(max_fd + 1, &readfds, NULL, NULL, &timeout);
         if (readyfds > 0) {
-            printf("%d\n", fdstr.total);
             for(int i = 0; i < fdstr.total; i++) {
-                printf("ok\n");
-                if(FD_ISSET(fdstr.fds[i], &readfds)) {   
-                    printf("inside read\n");
+                if(FD_ISSET(fdstr.fds[i].fd, &readfds)) {   
                     char buff[50];
                     memset(buff, 0, sizeof(buff));
 
-                    int recvint = recv(fdstr.fds[i], buff, sizeof(buff), 0);
+                    int recvint = recv(fdstr.fds[i].fd, buff, sizeof(buff), 0);
                     if (recvint > 0) {
-                        printf("received text: %s", buff);
                         for(int j = 0; j < fdstr.total; j++) {
-                            if (fdstr.fds[j] != socket_fd) {
-                                if (send(fdstr.fds[j], buff, strlen(buff), 0) == -1) {
+                            if (fdstr.fds[j].fd != socket_fd) {
+                                char msg[75];
+                                snprintf(msg, sizeof(msg), "%s: %s", fdstr.fds[i].username, buff);
+                                if (send(fdstr.fds[j].fd, msg, strlen(msg), 0) == -1) {
                                     printf("failed to send message to client");
                                 } 
                             }
                         }
                     } else if (recvint == 0) {
-                        close(fdstr.fds[i]);
-                        fdstr.fds[i] = fdstr.fds[fdstr.total-1];
+                        close(fdstr.fds[i].fd);
+                        fdstr.fds[i].fd = fdstr.fds[fdstr.total-1].fd;
                         fdstr.total--;
                         printf("connection disconnected\n");
                     } 
@@ -138,12 +141,20 @@ int main() {
                     perror("accept failed\n");
                     continue;
                 }
+                
+                char username[20];
+                int recvint = recv(accept_fd, username, sizeof(username), 0);
 
-                fdstr.fds[fdstr.total] = accept_fd;
+                if (recvint > 0) {
+                    strcpy(fdstr.fds[fdstr.total].username, username);
+                }
+
+                fdstr.fds[fdstr.total].fd = accept_fd;
                 fdstr.total++;
+
                 inet_ntop(peer_addr.ss_family, get_in_address((struct sockaddr *)&peer_addr), peer_addr_text, peer_addr_size);
                 
-                printf("%s connected to the server\n", peer_addr_text);
+                printf("%s connected to the server as %s\n", peer_addr_text, fdstr.fds[fdstr.total-1].username);
             }
 
         }
